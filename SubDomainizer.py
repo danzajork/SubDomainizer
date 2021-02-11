@@ -199,32 +199,34 @@ class JsExtract:
         UnicodeDecodeError 
             Raise an error if the endcoding found in the page is unkown.
         """
-
-        if url.startswith('http://') or url.startswith('https://'):
-            if isSSL:
-                req = requests.get(url, headers=heads, verify=False, timeout=15)
-            else:
-                req = requests.get(url, headers=heads, timeout=15)
-        else:
-            if isSSL:
-                req = requests.get(
-                    'http://' + url, headers=heads, verify=False, timeout=15)
-            else:
-                req = requests.get('http://' + url, headers=heads, timeout=15)
-
-        print(termcolor.colored("Searching for Inline Javascripts.....",
-                                color='yellow', attrs=['bold']))
-
         try:
-            html = unquote(req.content.decode('unicode-escape'))
-            minhtml = htmlmin.minify(html, remove_empty_space=True)
-            minhtml = minhtml.replace('\n', '')
-            finallist.append(minhtml)
-            print(termcolor.colored(
-                "Successfully got all the Inline Scripts.", color='blue', attrs=['bold']))
-        except UnicodeDecodeError:
-            print(termcolor.colored("Decoding error...",
-                                    color='red', attrs=['bold']))
+            if url.startswith('http://') or url.startswith('https://'):
+                if isSSL:
+                    req = requests.get(url, headers=heads, verify=False, timeout=15, allow_redirects=False)
+                else:
+                    req = requests.get(url, headers=heads, timeout=15, allow_redirects=False)
+            else:
+                if isSSL:
+                    req = requests.get(
+                        'http://' + url, headers=heads, verify=False, timeout=15, allow_redirects=False)
+                else:
+                    req = requests.get('http://' + url, headers=heads, timeout=15, allow_redirects=False)
+
+            print(termcolor.colored("Searching for Inline Javascripts.....",
+                                    color='yellow', attrs=['bold']))
+
+            try:
+                html = unquote(req.content.decode('unicode-escape'))
+                minhtml = htmlmin.minify(html, remove_empty_space=True)
+                minhtml = minhtml.replace('\n', '')
+                finallist.append(minhtml)
+                print(termcolor.colored(
+                    "Successfully got all the Inline Scripts.", color='blue', attrs=['bold']))
+            except UnicodeDecodeError:
+                print(termcolor.colored("Decoding error...",
+                                        color='red', attrs=['bold']))
+        except:
+            print("Error, continuing...")
 
     def ExtJsExtract(self, url, heads):
         """
@@ -243,34 +245,35 @@ class JsExtract:
             Raise an error if the endcoding found in the page is unkown.
         """
         #domain = urlparse(url).netloc
-
         print(termcolor.colored(
             "Searching for External Javascript links in page.....", color='yellow', attrs=['bold']))
-        if url.startswith('http://') or url.startswith('https://'):
-            if isSSL:
-                req = requests.get(url, headers=heads, verify=False, timeout=15)
-            else:
-                req = requests.get(url, headers=heads, timeout=15)
-        else:
-            if isSSL:
-                req = requests.get(
-                    'http://' + url, headers=heads, verify=False, timeout=15)
-            else:
-                req = requests.get('http://' + url, headers=heads, timeout=15)
         try:
-            html = unquote(req.content.decode('unicode-escape'))
-            soup = BeautifulSoup(html, features='html.parser')
+            if url.startswith('http://') or url.startswith('https://'):
+                if isSSL:
+                    req = requests.get(url, headers=heads, verify=False, timeout=15, allow_redirects=False)
+                else:
+                    req = requests.get(url, headers=heads, timeout=15, allow_redirects=False)
+            else:
+                if isSSL:
+                    req = requests.get(
+                        'http://' + url, headers=heads, verify=False, timeout=15, allow_redirects=False)
+                else:
+                    req = requests.get('http://' + url, headers=heads, timeout=15, allow_redirects=False)
+            try:
+                html = unquote(req.content.decode('unicode-escape'))
+                soup = BeautifulSoup(html, features='html.parser')
 
-            for link in soup.find_all('script'):
-                if link.get('src'):
-                    text = urljoin(url, link.get('src'))
-                    jsLinkList.append(text)
-                    #jsLinkList.append(text + link.get('src').strip())
-            print(termcolor.colored(
-                "Successfully got all the external js links", color='blue', attrs=['bold']))
-        except UnicodeDecodeError:
-            print("Decoding error, Exiting...")
-            sys.exit(1)
+                for link in soup.find_all('script'):
+                    if link.get('src'):
+                        text = urljoin(url, link.get('src'))
+                        jsLinkList.append(text)
+                        #jsLinkList.append(text + link.get('src').strip())
+                print(termcolor.colored(
+                    "Successfully got all the external js links", color='blue', attrs=['bold']))
+            except UnicodeDecodeError:
+                print("Decoding error, continuing...")
+        except:
+            print("Error, continuing...")
 
     def SaveExtJsContent(self, js):
         """
@@ -521,7 +524,9 @@ def getInfoFromData(file_ex, cloudlist, p, regex, ipv4reg, url):
     matches = p.finditer(str(file_ex))
     for matchNum, match in enumerate(matches):
         if entropy(match.group(2)) > 3.5:
-            secretList.add(match.group())
+            secretList.add(f"{url} ::: {match.group()}")
+            print(termcolor.colored(
+            f"{url} ::: {match.group()}", color='green', attrs=['bold']))
 
     # try:
     #     st = file.split()
@@ -754,42 +759,15 @@ if __name__ == "__main__":
                 for matchNum, match in enumerate(matches):
                     if entropy(match.group(2)) > 3.5:
                         secretList.add(match.group())
+                        print(termcolor.colored(
+                            match.group(), color='green', attrs=['bold']))
 
                 if args.domain:
                     compiledRegexDomain = PreCompiledRegexDomain(args.domain)
                     for subdomain in compiledRegexDomain.findall(str(data.replace('\n', ' '))):
                         finalset.add(subdomain)
 
-            # if isGit and args.domain:
-            #     compiledRegexDomain = PreCompiledRegexDomain(args.domain)
-            #     domain = str(getDomain(args.domain))
-            #     print(termcolor.colored('Finding Subdomains and secrets from Github..Please wait...',
-            #                             color='yellow',
-            #                             attrs=['bold']))
-            #     print(termcolor.colored(
-            #         'Searching in github for : ' + termcolor.colored(domain, color='green',
-            #                                                          attrs=['bold']), color='blue',
-            #         attrs=['bold']))
-
-            #     gitThread = ThreadPool(200)
-            #     contentApiURLs = getUrlsFromData(gitToken, str(domain))
-            #     gitHublist = gitThread.map(getGithubData, contentApiURLs)
-            #     gitContentThread = ThreadPool(200)
-
-            #     for ghitem in gitHublist:
-            #         gitContentThread.starmap(getInfoFromData,
-            #                                  zip(ghitem, repeat(compiledRegexCloud),
-            #                                      repeat(
-            #                                          compiledRegexSecretList),
-            #                                      repeat(compiledRegexDomain), repeat(
-            #                                          compiledRegexIP),
-            #                                      repeat(domain)))
-            #     print(
-            #         termcolor.colored('Completed finding from github...', color='blue', attrs=['bold']))
-            # else:
-            #     print(
-            #         termcolor.colored('Not scanned from github as domain not given, use \'-d\' to give domain...', color='red', attrs=['bold']))
-
+            
         else:
             argerror(url, listfile)
             if isGit:
